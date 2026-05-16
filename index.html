@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Spanish Translator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #c0392b 0%, #e67e22 40%, #f39c12 70%, #c0392b 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 20px;
+  }
+  h1 { color: white; font-size: 1.6rem; font-weight: 900; margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .subtitle { color: rgba(255,255,255,0.85); font-size: 0.9rem; margin-bottom: 20px; }
+  .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+  .tab {
+    padding: 10px 22px; border-radius: 25px; border: none; cursor: pointer;
+    font-weight: 700; font-size: 0.95rem; transition: all 0.2s;
+    background: rgba(255,255,255,0.25); color: white;
+  }
+  .tab.active { background: white; color: #c0392b; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .card {
+    background: rgba(255,255,255,0.97); border-radius: 24px;
+    padding: 28px 22px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    width: 100%; max-width: 420px;
+  }
+  .mic-btn {
+    width: 160px; height: 160px; border-radius: 50%; border: none;
+    color: white; font-size: 1rem; font-weight: 800; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 0 auto 20px; line-height: 1.4; transition: all 0.2s;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+  }
+  .mic-btn .icon { font-size: 2rem; margin-bottom: 4px; }
+  .hint { text-align: center; color: #aaa; font-size: 0.85rem; margin-bottom: 10px; }
+  .recording-indicator {
+    text-align: center; color: #e74c3c; font-weight: 700;
+    font-size: 0.9rem; margin-bottom: 14px; display: none;
+    align-items: center; justify-content: center; gap: 8px;
+  }
+  .recording-indicator.show { display: flex; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #e74c3c; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .label { font-size: 0.72rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  .text-box {
+    background: #f8f9fa; border-radius: 12px; padding: 12px 14px;
+    font-size: 1rem; color: #2c3e50; line-height: 1.6;
+    min-height: 44px; border: 1px solid #e0e0e0; margin-bottom: 14px;
+  }
+  .text-box.translation {
+    font-size: 1.1rem; font-weight: 700;
+  }
+  .en-es .text-box.translation { background: linear-gradient(135deg,#fff5f5,#fff0ee); color: #c0392b; border-color: #f5c6c6; }
+  .es-en .text-box.translation { background: linear-gradient(135deg,#f0f8ff,#e8f4fd); color: #2980B9; border-color: #b8d4f0; }
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .action-btn {
+    border: none; border-radius: 20px; padding: 9px 20px;
+    font-size: 0.9rem; font-weight: 700; cursor: pointer; color: white;
+  }
+  .listen-btn { background: linear-gradient(135deg, #c0392b, #e67e22); }
+  .es-en .listen-btn { background: linear-gradient(135deg, #2980B9, #1ABC9C); }
+  .reset-btn { background: linear-gradient(135deg,#636e72,#b2bec3); }
+  .status-msg { text-align: center; font-weight: 700; margin-bottom: 12px; }
+  .hidden { display: none; }
+  /* Text mode */
+  .text-input-area {
+    width: 100%; border: 1px solid #ddd; border-radius: 12px;
+    padding: 12px 14px; font-size: 1rem; font-family: inherit;
+    resize: vertical; min-height: 80px; margin-bottom: 12px;
+    color: #2c3e50;
+  }
+  .translate-btn {
+    width: 100%; padding: 12px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, #c0392b, #e67e22);
+    color: white; font-size: 1rem; font-weight: 700; cursor: pointer; margin-bottom: 12px;
+  }
+  .mode-toggle { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+  .mode-btn {
+    padding: 7px 16px; border-radius: 20px; border: 2px solid #c0392b;
+    background: white; color: #c0392b; font-weight: 700; cursor: pointer; font-size: 0.85rem;
+  }
+  .mode-btn.active { background: #c0392b; color: white; }
+</style>
+</head>
+<body>
+<h1>🇪🇸 Spanish Translator</h1>
+<p class="subtitle">Powered by AI • No limits</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="setDir('en-es')">🇺🇸 → 🇪🇸</button>
+  <button class="tab" onclick="setDir('es-en')">🇪🇸 → 🇺🇸</button>
+</div>
+
+<div class="card" id="mainCard">
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="voiceModeBtn" onclick="setMode('voice')">🎙 Voice</button>
+    <button class="mode-btn" id="textModeBtn" onclick="setMode('text')">⌨️ Type</button>
+  </div>
+
+  <!-- VOICE MODE -->
+  <div id="voiceMode">
+    <button class="mic-btn" id="micBtn" onclick="toggleRecording()"
+      style="background: linear-gradient(135deg, #2980B9, #1ABC9C);">
+      <span class="icon">🎙</span>
+      <span id="micLabel">English<br/>→ Spanish</span>
+    </button>
+    <p class="hint" id="hint">Tap the circle, speak, then tap again to translate</p>
+    <div class="recording-indicator" id="recIndicator">
+      <span class="dot"></span> Recording — tap button to translate
+    </div>
+    <div id="statusMsg" class="status-msg hidden"></div>
+    <div id="originalBox" class="hidden">
+      <div class="label" id="fromLabel">🇺🇸 ENGLISH (ORIGINAL)</div>
+      <div class="text-box" id="originalText"></div>
+    </div>
+    <div id="translatedBox" class="hidden">
+      <div class="label" id="toLabel">🇪🇸 SPANISH (TRANSLATION)</div>
+      <div class="text-box translation" id="translatedText"></div>
+    </div>
+    <div class="btn-row hidden" id="actionBtns">
+      <button class="action-btn listen-btn" onclick="reSpeak()">🔊 Listen again</button>
+      <button class="action-btn reset-btn" onclick="resetAll()">🔄 New translation</button>
+    </div>
+  </div>
+
+  <!-- TEXT MODE -->
+  <div id="textMode" class="hidden">
+    <textarea class="text-input-area" id="textInput" placeholder="Type your text here..."></textarea>
+    <button class="translate-btn" onclick="translateText()">Translate</button>
+    <div id="textStatusMsg" class="status-msg hidden"></div>
+    <div id="textTranslatedBox" class="hidden">
+      <div class="label" id="textToLabel">🇪🇸 SPANISH (TRANSLATION)</div>
+      <div class="text-box translation" id="textTranslatedText"></div>
+    </div>
+    <div class="btn-row hidden" id="textActionBtns">
+      <button class="action-btn listen-btn" onclick="reSpeakText()">🔊 Listen</button>
+      <button class="action-btn reset-btn" onclick="resetText()">🔄 Clear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TRANSLATE_URL = 'https://john-174a7c51.base44.app/functions/translate';
+
+let direction = 'en-es';
+let inputMode = 'voice';
+let isRecording = false;
+let finalTranscript = '';
+let recognition = null;
+let activeRec = false;
+let lastTranslated = '';
+let lastSpeakLang = 'es-ES';
+
+function setDir(dir) {
+  direction = dir;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&dir==='en-es')||(i===1&&dir==='es-en')));
+  const card = document.getElementById('mainCard');
+  card.className = 'card ' + dir;
+  updateLabels();
+  resetAll();
+  resetText();
+}
+
+function setMode(mode) {
+  inputMode = mode;
+  document.getElementById('voiceModeBtn').classList.toggle('active', mode==='voice');
+  document.getElementById('textModeBtn').classList.toggle('active', mode==='text');
+  document.getElementById('voiceMode').classList.toggle('hidden', mode!=='voice');
+  document.getElementById('textMode').classList.toggle('hidden', mode!=='text');
+}
+
+function updateLabels() {
+  const isEnEs = direction === 'en-es';
+  document.getElementById('micBtn').style.background = isEnEs
+    ? 'linear-gradient(135deg, #2980B9, #1ABC9C)'
+    : 'linear-gradient(135deg, #c0392b, #e67e22)';
+  document.getElementById('micLabel').innerHTML = isEnEs ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
+  document.getElementById('fromLabel').textContent = isEnEs ? '🇺🇸 ENGLISH (ORIGINAL)' : '🇪🇸 SPANISH (ORIGINAL)';
+  document.getElementById('toLabel').textContent = isEnEs ? '🇪🇸 SPANISH (TRANSLATION)' : '🇺🇸 ENGLISH (TRANSLATION)';
+  document.getElementById('textToLabel').textContent = isEnEs ? '🇪🇸 SPANISH (TRANSLATION)' : '🇺🇸 ENGLISH (TRANSLATION)';
+}
+
+function toggleRecording() {
+  if (isRecording) stopRecording();
+  else startRecording();
+}
+
+function buildRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR();
+  rec.lang = direction === 'en-es' ? 'en-US' : 'es-ES';
+  rec.continuous = false;
+  rec.interimResults = false;
+  rec.onresult = (e) => {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
+    }
+    document.getElementById('originalText').textContent = finalTranscript.trim();
+    show('originalBox');
+  };
+  rec.onerror = (e) => { if (e.error==='no-speech'||e.error==='aborted') return; };
+  rec.onend = () => {
+    if (activeRec) {
+      try { const n = buildRecognition(); recognition = n; n.start(); } catch { activeRec=false; doTranslate(finalTranscript); }
+    } else { doTranslate(finalTranscript); }
+  };
+  return rec;
+}
+
+function startRecording() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showStatus('Your browser does not support voice. Please use Google Chrome.'); return; }
+  finalTranscript = '';
+  hide('originalBox'); hide('translatedBox'); hide('actionBtns'); hide('statusMsg');
+  document.getElementById('originalText').textContent = '';
+  document.getElementById('translatedText').textContent = '';
+  isRecording = true; activeRec = true;
+  const btn = document.getElementById('micBtn');
+  btn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+  btn.style.border = '4px solid rgba(255,255,255,0.6)';
+  document.getElementById('micLabel').innerHTML = '⏹<br/>Tap to<br/>translate';
+  show('recIndicator'); hide('hint');
+  recognition = buildRecognition();
+  recognition.start();
+}
+
+function stopRecording() {
+  activeRec = false; isRecording = false;
+  if (recognition) recognition.stop();
+  const btn = document.getElementById('micBtn');
+  btn.style.border = 'none';
+  hide('recIndicator'); show('hint');
+}
+
+async function doTranslate(text) {
+  if (!text.trim()) { resetAll(); return; }
+  isRecording = false;
+  const isEnEs = direction === 'en-es';
+  const btn = document.getElementById('micBtn');
+  btn.style.background = isEnEs ? 'linear-gradient(135deg, #2980B9, #1ABC9C)' : 'linear-gradient(135deg, #c0392b, #e67e22)';
+  btn.style.border = 'none';
+  document.getElementById('micLabel').innerHTML = isEnEs ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
+  showStatus('⏳ Translating...');
+  hide('translatedBox'); hide('actionBtns');
+  try {
+    const from = isEnEs ? 'en' : 'es';
+    const to = isEnEs ? 'es' : 'en';
+    lastSpeakLang = isEnEs ? 'es-ES' : 'en-US';
+    const res = await fetch(TRANSLATE_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text: text.trim(), from, to})
+    });
+    const data = await res.json();
+    if (data.translated) {
+      lastTranslated = data.translated;
+      document.getElementById('translatedText').textContent = data.translated;
+      show('translatedBox'); hide('statusMsg'); show('actionBtns');
+      speak(data.translated, lastSpeakLang);
+    } else { showStatus('Translation error. Please try again.'); }
+  } catch { showStatus('Translation error. Please try again.'); }
+}
+
+async function translateText() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) return;
+  const isEnEs = direction === 'en-es';
+  const from = isEnEs ? 'en' : 'es';
+  const to = isEnEs ? 'es' : 'en';
+  lastSpeakLang = isEnEs ? 'es-ES' : 'en-US';
+  document.getElementById('textStatusMsg').textContent = '⏳ Translating...';
+  show('textStatusMsg'); hide('textTranslatedBox'); hide('textActionBtns');
+  try {
+    const res = await fetch(TRANSLATE_URL, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text, from, to})
+    });
+    const data = await res.json();
+    if (data.translated) {
+      lastTranslated = data.translated;
+      document.getElementById('textTranslatedText').textContent = data.translated;
+      hide('textStatusMsg'); show('textTranslatedBox'); show('textActionBtns');
+      speak(data.translated, lastSpeakLang);
+    } else { document.getElementById('textStatusMsg').textContent = 'Translation error. Try again.'; }
+  } catch { document.getElementById('textStatusMsg').textContent = 'Translation error. Try again.'; }
+}
+
+function speak(text, lang) {
+  window.speechSynthesis.cancel();
+  setTimeout(() => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang; u.rate = 0.9; u.volume = 1;
+    window.speechSynthesis.speak(u);
+  }, 300);
+}
+
+function reSpeak() { if (lastTranslated) speak(lastTranslated, lastSpeakLang); }
+function reSpeakText() { if (lastTranslated) speak(lastTranslated, lastSpeakLang); }
+
+function resetAll() {
+  activeRec = false; isRecording = false;
+  if (recognition) recognition.abort();
+  window.speechSynthesis.cancel();
+  finalTranscript = ''; lastTranslated = '';
+  document.getElementById('originalText').textContent = '';
+  document.getElementById('translatedText').textContent = '';
+  hide('originalBox'); hide('translatedBox'); hide('actionBtns'); hide('statusMsg'); hide('recIndicator'); show('hint');
+  const isEnEs = direction === 'en-es';
+  const btn = document.getElementById('micBtn');
+  btn.style.background = isEnEs ? 'linear-gradient(135deg, #2980B9, #1ABC9C)' : 'linear-gradient(135deg, #c0392b, #e67e22)';
+  btn.style.border = 'none';
+  document.getElementById('micLabel').innerHTML = isEnEs ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
+}
+
+function resetText() {
+  document.getElementById('textInput').value = '';
+  document.getElementById('textTranslatedText').textContent = '';
+  hide('textTranslatedBox'); hide('textActionBtns'); hide('textStatusMsg');
+  lastTranslated = '';
+}
+
+function showStatus(msg) { const el = document.getElementById('statusMsg'); el.textContent = msg; show('statusMsg'); }
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+</script>
+</body>
+</html>
