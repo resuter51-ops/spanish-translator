@@ -118,7 +118,7 @@
     </div>
     <div id="translatedBox" class="hidden">
       <div class="label" id="toLabel">🇪🇸 SPANISH (TRANSLATION)</div>
-      <div class="text-box translation" id="translatedText"></div>
+      <div class="text-box translation" id="translatedText" onclick="speakNow(this.textContent, lastSpeakLang)" style="cursor:pointer;" title="Tap to hear"></div>
     </div>
     <div class="btn-row hidden" id="actionBtns">
       <button class="action-btn listen-btn" onclick="reSpeak()">🔊 Listen again</button>
@@ -133,7 +133,7 @@
     <div id="textStatusMsg" class="status-msg hidden"></div>
     <div id="textTranslatedBox" class="hidden">
       <div class="label" id="textToLabel">🇪🇸 SPANISH (TRANSLATION)</div>
-      <div class="text-box translation" id="textTranslatedText"></div>
+      <div class="text-box translation" id="textTranslatedText" onclick="speakNow(this.textContent, lastSpeakLang)" style="cursor:pointer;" title="Tap to hear"></div>
     </div>
     <div class="btn-row hidden" id="textActionBtns">
       <button class="action-btn listen-btn" onclick="reSpeakText()">🔊 Listen</button>
@@ -289,26 +289,39 @@ async function translateText() {
 }
 
 function speak(text, lang) {
+  // On Android, speechSynthesis must be triggered by a direct user gesture.
+  // We auto-try it, but if it fails silently, the Listen button handles it.
   window.speechSynthesis.cancel();
   function doSpeak() {
     const voices = window.speechSynthesis.getVoices();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang; u.rate = 0.9; u.volume = 1;
-    // Pick a matching voice if available
-    const match = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+    u.lang = lang; u.rate = 0.85; u.volume = 1; u.pitch = 1;
+    const match = voices.find(v => v.lang && v.lang.startsWith(lang.split('-')[0]));
     if (match) u.voice = match;
     window.speechSynthesis.speak(u);
   }
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length > 0) {
-    setTimeout(doSpeak, 200);
+  // Warm up voices then speak
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak();
   } else {
-    window.speechSynthesis.onvoiceschanged = () => { setTimeout(doSpeak, 200); };
+    window.speechSynthesis.onvoiceschanged = doSpeak;
+    window.speechSynthesis.getVoices(); // trigger load
   }
 }
 
-function reSpeak() { if (lastTranslated) speak(lastTranslated, lastSpeakLang); }
-function reSpeakText() { if (lastTranslated) speak(lastTranslated, lastSpeakLang); }
+function speakNow(text, lang) {
+  // Called directly from button tap — always works on mobile
+  window.speechSynthesis.cancel();
+  const voices = window.speechSynthesis.getVoices();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang; u.rate = 0.85; u.volume = 1; u.pitch = 1;
+  const match = voices.find(v => v.lang && v.lang.startsWith(lang.split('-')[0]));
+  if (match) u.voice = match;
+  window.speechSynthesis.speak(u);
+}
+
+function reSpeak() { if (lastTranslated) speakNow(lastTranslated, lastSpeakLang); }
+function reSpeakText() { if (lastTranslated) speakNow(lastTranslated, lastSpeakLang); }
 
 function resetAll() {
   activeRec = false; isRecording = false;
