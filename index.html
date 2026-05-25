@@ -86,9 +86,6 @@
 </style>
 </head>
 <body>
-<div id="accessGate" style="display:flex;position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#0f3460);z-index:9999;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;"><div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:24px;padding:32px 28px;max-width:360px;width:100%;text-align:center;"><div style="font-size:2.5rem;margin-bottom:12px;">&#128274;</div><h2 style="color:white;font-size:1.3rem;margin-bottom:8px;font-weight:900;">Access Required</h2><p style="color:rgba(255,255,255,0.6);font-size:0.88rem;margin-bottom:24px;line-height:1.5;">Enter your access code to unlock this translator. Your code works once — after that this device stays unlocked forever.</p><input id="codeInput" type="text" placeholder="e.g. SP-XXXX-XXXX" style="width:100%;padding:13px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:white;font-size:1.05rem;text-align:center;letter-spacing:3px;margin-bottom:12px;font-family:monospace;text-transform:uppercase;outline:none;" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')submitCode()"/><button onclick="submitCode()" id="unlockBtn" style="width:100%;padding:14px;background:linear-gradient(135deg,#f39c12,#e67e22);color:white;border:none;border-radius:14px;font-size:1rem;font-weight:800;cursor:pointer;">Unlock Translator &#8594;</button><div id="gateError" style="color:#e74c3c;font-size:0.85rem;margin-top:12px;min-height:20px;font-weight:600;"></div><p style="color:rgba(255,255,255,0.25);font-size:0.72rem;margin-top:18px;">Purchased at instant-translators-bob.netlify.app</p></div></div><script>(function(){var FIREBASE="https://john-the-builder-default-rtdb.firebaseio.com";var SKEY="sp_unlocked";var THIS_LANG="spanish";if(localStorage.getItem(SKEY)==="1"){document.getElementById("accessGate").style.display="none";return;}async function submitCode(){var raw=document.getElementById("codeInput").value.trim().toUpperCase();var errEl=document.getElementById("gateError");var btn=document.getElementById("unlockBtn");if(!raw){errEl.textContent="Please enter your access code.";return;}btn.disabled=true;btn.textContent="Checking...";errEl.textContent="";try{var mr=await fetch(FIREBASE+"/master.json");var md=await mr.json();if(md&&md.code&&raw===md.code){localStorage.setItem(SKEY,"1");document.getElementById("accessGate").style.display="none";return;}var key=raw.replace(/-/g,"_");var r=await fetch(FIREBASE+"/codes/"+key+".json");var d=await r.json();if(!d){errEl.textContent="Invalid code. Please check and try again.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";return;}if(d.used){errEl.textContent="This code has already been used on another device.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";return;}var langs=d.languages||[];if(langs.indexOf(THIS_LANG)===-1){errEl.textContent="This code does not include access to this translator.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";return;}await fetch(FIREBASE+"/codes/"+key+".json",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({used:true,used_at:new Date().toISOString()})});localStorage.setItem(SKEY,"1");document.getElementById("accessGate").style.display="none";}catch(e){errEl.textContent="Connection error. Please try again.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";}}window.submitCode=submitCode;})();</script>
-
-
 <h1>🇪🇸 Spanish Translator</h1>
 <p class="subtitle">Powered by AI • No limits</p>
 
@@ -293,11 +290,21 @@ async function translateText() {
 
 function speak(text, lang) {
   window.speechSynthesis.cancel();
-  setTimeout(() => {
+  function doSpeak() {
+    const voices = window.speechSynthesis.getVoices();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang; u.rate = 0.9; u.volume = 1;
+    // Pick a matching voice if available
+    const match = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+    if (match) u.voice = match;
     window.speechSynthesis.speak(u);
-  }, 300);
+  }
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) {
+    setTimeout(doSpeak, 200);
+  } else {
+    window.speechSynthesis.onvoiceschanged = () => { setTimeout(doSpeak, 200); };
+  }
 }
 
 function reSpeak() { if (lastTranslated) speak(lastTranslated, lastSpeakLang); }
