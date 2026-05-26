@@ -288,36 +288,32 @@ async function translateText() {
   } catch { document.getElementById('textStatusMsg').textContent = 'Translation error. Try again.'; }
 }
 
-function speak(text, lang) {
-  // On Android, speechSynthesis must be triggered by a direct user gesture.
-  // We auto-try it, but if it fails silently, the Listen button handles it.
-  window.speechSynthesis.cancel();
-  function doSpeak() {
-    const voices = window.speechSynthesis.getVoices();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang; u.rate = 0.85; u.volume = 1; u.pitch = 1;
-    const match = voices.find(v => v.lang && v.lang.startsWith(lang.split('-')[0]));
-    if (match) u.voice = match;
-    window.speechSynthesis.speak(u);
-  }
-  // Warm up voices then speak
-  if (window.speechSynthesis.getVoices().length > 0) {
-    doSpeak();
-  } else {
-    window.speechSynthesis.onvoiceschanged = doSpeak;
-    window.speechSynthesis.getVoices(); // trigger load
-  }
-}
+// speak() replaced by speakNow() using TTS proxy
 
 function speakNow(text, lang) {
-  // Called directly from button tap — always works on mobile
-  window.speechSynthesis.cancel();
-  const voices = window.speechSynthesis.getVoices();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang; u.rate = 0.85; u.volume = 1; u.pitch = 1;
-  const match = voices.find(v => v.lang && v.lang.startsWith(lang.split('-')[0]));
-  if (match) u.voice = match;
-  window.speechSynthesis.speak(u);
+  const TTS_PROXY = 'https://john-174a7c51.base44.app/functions/tts';
+  const ttsLang = lang.startsWith('es') ? 'es' : 'en';
+  const chunks = [];
+  const maxLen = 180;
+  let remaining = text.trim();
+  while (remaining.length > 0) {
+    let chunk = remaining.substring(0, maxLen);
+    const lastSpace = chunk.lastIndexOf(' ');
+    if (remaining.length > maxLen && lastSpace > 0) chunk = chunk.substring(0, lastSpace);
+    chunks.push(chunk.trim());
+    remaining = remaining.substring(chunk.length).trim();
+  }
+  let i = 0;
+  function playNext() {
+    if (i >= chunks.length) return;
+    const src = TTS_PROXY + '?lang=' + ttsLang + '&text=' + encodeURIComponent(chunks[i]);
+    const audio = new Audio(src);
+    audio.onended = () => { i++; playNext(); };
+    audio.onerror = () => { i++; playNext(); };
+    audio.play().catch(() => {});
+    i++;
+  }
+  playNext();
 }
 
 function reSpeak() { if (lastTranslated) speakNow(lastTranslated, lastSpeakLang); }
