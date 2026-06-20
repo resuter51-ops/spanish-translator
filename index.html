@@ -296,15 +296,26 @@ function startRecording() {
   document.getElementById('translatedText').textContent = '';
   if (window.speechSynthesis) window.speechSynthesis.cancel();
 
-  // Create recognition - simple, one-shot
+  // Create recognition
   recognition = new SR();
   recognition.lang = direction === 'en-es' ? 'en-US' : 'es-ES';
   recognition.continuous = false;
-  recognition.interimResults = false;
+  recognition.interimResults = true;
 
+  // Capture words as they come in - this ensures we have text even if
+  // onend fires before the final result is delivered (common on Android)
   recognition.onresult = (e) => {
-    // Get the single final result
-    finalTranscript = e.results[0][0].transcript;
+    let interim = '';
+    let finalText = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        finalText += e.results[i][0].transcript;
+      } else {
+        interim += e.results[i][0].transcript;
+      }
+    }
+    // Use final text if we have it, otherwise use interim
+    finalTranscript = finalText || interim;
     document.getElementById('originalText').textContent = finalTranscript;
     show('originalBox');
   };
@@ -313,6 +324,7 @@ function startRecording() {
     if (e.error === 'no-speech' || e.error === 'aborted') return;
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       showStatus('🎤 Mic access denied. Allow microphone in browser settings and try again.');
+      isRecording = false;
     }
   };
 
@@ -328,13 +340,15 @@ function startRecording() {
       ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
     hide('recIndicator'); show('hint');
 
-    // Translate what we got
-    if (finalTranscript.trim() && !translated) {
-      translated = true;
-      doTranslate(finalTranscript);
-    } else if (!finalTranscript.trim() && !translated) {
-      showStatus("🎤 Didn't catch that. Tap the circle and try again.");
-    }
+    // Wait 500ms before checking - gives onresult time to fire on Android
+    setTimeout(() => {
+      if (finalTranscript.trim() && !translated) {
+        translated = true;
+        doTranslate(finalTranscript);
+      } else if (!finalTranscript.trim() && !translated) {
+        showStatus("🎤 Didn't catch that. Tap the circle and try again.");
+      }
+    }, 500);
   };
 
   // Update UI
