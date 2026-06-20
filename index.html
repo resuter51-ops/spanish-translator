@@ -193,20 +193,45 @@ function buildRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const rec = new SR();
   rec.lang = direction === 'en-es' ? 'en-US' : 'es-ES';
-  rec.continuous = false;
-  rec.interimResults = false;
+  rec.continuous = true;
+  rec.interimResults = true;
   rec.onresult = (e) => {
+    let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
+      if (e.results[i].isFinal) {
+        finalTranscript += e.results[i][0].transcript + ' ';
+      } else {
+        interim += e.results[i][0].transcript;
+      }
     }
-    document.getElementById('originalText').textContent = finalTranscript.trim();
+    const display = finalTranscript.trim() || interim.trim();
+    document.getElementById('originalText').textContent = display;
     show('originalBox');
   };
-  rec.onerror = (e) => { if (e.error==='no-speech'||e.error==='aborted') return; };
+  rec.onerror = (e) => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      showStatus('🎤 Microphone access denied. Please allow mic access in your browser settings.');
+      activeRec = false; isRecording = false;
+      return;
+    }
+    // For any other error, don't crash — just let onend handle it
+  };
   rec.onend = () => {
     if (activeRec) {
-      try { const n = buildRecognition(); recognition = n; n.start(); } catch { activeRec=false; doTranslate(finalTranscript); }
-    } else { doTranslate(finalTranscript); }
+      // Recognition stopped on its own (Android timeout). Restart to keep listening.
+      try {
+        const n = buildRecognition();
+        recognition = n;
+        n.start();
+      } catch (err) {
+        activeRec = false;
+        doTranslate(finalTranscript);
+      }
+    } else {
+      // User tapped to stop. Small delay to catch any final results.
+      setTimeout(() => doTranslate(finalTranscript), 300);
+    }
   };
   return rec;
 }
@@ -236,8 +261,14 @@ function stopRecording() {
   hide('recIndicator'); show('hint');
 }
 
+let translating = false;
 async function doTranslate(text) {
-  if (!text.trim()) { resetAll(); return; }
+  if (translating) return;
+  if (!text || !text.trim()) {
+    showStatus('🎤 Didn\'t catch that. Tap the circle and try speaking again.');
+    return;
+  }
+  translating = true;
   isRecording = false;
   const isEnEs = direction === 'en-es';
   const btn = document.getElementById('micBtn');
@@ -262,7 +293,8 @@ async function doTranslate(text) {
       show('translatedBox'); hide('statusMsg'); show('actionBtns');
       speakNow(data.translated, lastSpeakLang);
     } else { showStatus('Translation error. Please try again.'); }
-  } catch { showStatus('Translation error. Please try again.'); }
+  } catch (err) { showStatus('Translation error. Please try again.'); }
+  translating = false;
 }
 
 async function translateText() {
@@ -324,7 +356,7 @@ function resetAll() {
   activeRec = false; isRecording = false;
   if (recognition) recognition.abort();
   window.speechSynthesis.cancel();
-  finalTranscript = ''; lastTranslated = '';
+  finalTranscript = ''; lastTranslated = ''; translating = false;
   document.getElementById('originalText').textContent = '';
   document.getElementById('translatedText').textContent = '';
   hide('originalBox'); hide('translatedBox'); hide('actionBtns'); hide('statusMsg'); hide('recIndicator'); show('hint');
