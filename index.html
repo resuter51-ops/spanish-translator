@@ -260,7 +260,7 @@ async function doTranslate(text) {
       lastTranslated = data.translated;
       document.getElementById('translatedText').textContent = data.translated;
       show('translatedBox'); hide('statusMsg'); show('actionBtns');
-      speak(data.translated, lastSpeakLang);
+      speakNow(data.translated, lastSpeakLang);
     } else { showStatus('Translation error. Please try again.'); }
   } catch { showStatus('Translation error. Please try again.'); }
 }
@@ -284,7 +284,7 @@ async function translateText() {
       lastTranslated = data.translated;
       document.getElementById('textTranslatedText').textContent = data.translated;
       hide('textStatusMsg'); show('textTranslatedBox'); show('textActionBtns');
-      speak(data.translated, lastSpeakLang);
+      speakNow(data.translated, lastSpeakLang);
     } else { document.getElementById('textStatusMsg').textContent = 'Translation error. Try again.'; }
   } catch { document.getElementById('textStatusMsg').textContent = 'Translation error. Try again.'; }
 }
