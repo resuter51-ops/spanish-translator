@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="google" content="notranslate"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Spanish Translator</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
     min-height: 100vh;
     background: linear-gradient(135deg, #c0392b 0%, #e67e22 40%, #f39c12 70%, #c0392b 100%);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     display: flex; flex-direction: column; align-items: center; padding: 20px;
   }
-  h1 { color: white; font-size: 1.6rem; font-weight: 900; margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  h1 { color: white; font-size: 1.6rem; font-weight: 900; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
   .subtitle { color: rgba(255,255,255,0.85); font-size: 0.9rem; margin-bottom: 20px; }
   .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
   .tab {
@@ -33,6 +33,7 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     margin: 0 auto 20px; line-height: 1.4; transition: all 0.2s;
     box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+    touch-action: manipulation;
   }
   .mic-btn .icon { font-size: 2rem; margin-bottom: 4px; }
   .hint { text-align: center; color: #aaa; font-size: 0.85rem; margin-bottom: 10px; }
@@ -49,23 +50,24 @@
     background: #f8f9fa; border-radius: 12px; padding: 12px 14px;
     font-size: 1rem; color: #2c3e50; line-height: 1.6;
     min-height: 44px; border: 1px solid #e0e0e0; margin-bottom: 14px;
+    word-wrap: break-word;
   }
   .text-box.translation {
-    font-size: 1.1rem; font-weight: 700;
+    font-size: 1.15rem; font-weight: 700;
   }
   .en-es .text-box.translation { background: linear-gradient(135deg,#fff5f5,#fff0ee); color: #c0392b; border-color: #f5c6c6; }
   .es-en .text-box.translation { background: linear-gradient(135deg,#f0f8ff,#e8f4fd); color: #2980B9; border-color: #b8d4f0; }
   .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
   .action-btn {
-    border: none; border-radius: 20px; padding: 9px 20px;
+    border: none; border-radius: 20px; padding: 10px 22px;
     font-size: 0.9rem; font-weight: 700; cursor: pointer; color: white;
+    touch-action: manipulation;
   }
   .listen-btn { background: linear-gradient(135deg, #c0392b, #e67e22); }
   .es-en .listen-btn { background: linear-gradient(135deg, #2980B9, #1ABC9C); }
-  .reset-btn { background: linear-gradient(135deg,#636e72,#b2bec3); }
+  .reset-btn { background: linear-gradient(#636e72,#b2bec3); }
   .status-msg { text-align: center; font-weight: 700; margin-bottom: 12px; }
   .hidden { display: none; }
-  /* Text mode */
   .text-input-area {
     width: 100%; border: 1px solid #ddd; border-radius: 12px;
     padding: 12px 14px; font-size: 1rem; font-family: inherit;
@@ -86,7 +88,61 @@
 </style>
 </head>
 <body>
-<div id="accessGate" style="display:flex;position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#0f3460);z-index:9999;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;"><div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:24px;padding:32px 28px;max-width:360px;width:100%;text-align:center;"><div style="font-size:2.5rem;margin-bottom:12px;">&#128274;</div><h2 style="color:white;font-size:1.3rem;margin-bottom:8px;font-weight:900;">Access Required</h2><p style="color:rgba(255,255,255,0.6);font-size:0.88rem;margin-bottom:24px;line-height:1.5;">Enter your access code to unlock this translator. Your code works once — after that this device stays unlocked forever.</p><input id="codeInput" type="text" placeholder="e.g. CO-XXXX-XXXX" style="width:100%;padding:13px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:white;font-size:1.05rem;text-align:center;letter-spacing:3px;margin-bottom:12px;font-family:monospace;text-transform:uppercase;outline:none;" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')submitCode()"/><button onclick="submitCode()" id="unlockBtn" style="width:100%;padding:14px;background:linear-gradient(135deg,#f39c12,#e67e22);color:white;border:none;border-radius:14px;font-size:1rem;font-weight:800;cursor:pointer;">Unlock Translator &#8594;</button><div id="gateError" style="color:#e74c3c;font-size:0.85rem;margin-top:12px;min-height:20px;font-weight:600;"></div><p style="color:rgba(255,255,255,0.25);font-size:0.72rem;margin-top:18px;">Private access only</p></div></div><script>(function(){var FIREBASE="https://john-the-builder-default-rtdb.firebaseio.com";var SKEY="es_unlocked";var THIS_LANG="spanish";if(localStorage.getItem(SKEY)==="1"){document.getElementById("accessGate").style.display="none";return;}async function submitCode(){var raw=document.getElementById("codeInput").value.trim().toUpperCase();var errEl=document.getElementById("gateError");var btn=document.getElementById("unlockBtn");if(!raw){errEl.textContent="Please enter your access code.";return;}btn.disabled=true;btn.textContent="Checking...";errEl.textContent="";try{if(raw==="MASTER-QCU6-VWP2"){localStorage.setItem(SKEY,"1");document.getElementById("accessGate").style.display="none";return;}var key=raw.replace(/-/g,"_");var r=await fetch(FIREBASE+"/codes/"+key+".json");var d=await r.json();if(!d){errEl.textContent="Invalid code. Please check and try again.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";return;}if(d.used){errEl.textContent="This code has already been used on another device.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";return;}var langs=d.languages||[];if(langs.indexOf(THIS_LANG)===-1){errEl.textContent="This code does not include access to this translator.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";return;}await fetch(FIREBASE+"/codes/"+key+".json",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({used:true,used_at:new Date().toISOString()})});localStorage.setItem(SKEY,"1");document.getElementById("accessGate").style.display="none";}catch(e){errEl.textContent="Connection error. Please try again.";btn.disabled=false;btn.textContent="Unlock Translator &#8594;";}}window.submitCode=submitCode;})();</script>
+
+<!-- ACCESS GATE -->
+<div id="accessGate" style="display:flex;position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#0f3460);z-index:9999;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">
+  <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:24px;padding:32px 28px;max-width:360px;width:100%;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">🔒</div>
+    <h2 style="color:white;font-size:1.3rem;margin-bottom:8px;font-weight:900;">Access Required</h2>
+    <p style="color:rgba(255,255,255,0.6);font-size:0.88rem;margin-bottom:24px;line-height:1.5;">Enter your access code to unlock this translator. Your code works once — after that this device stays unlocked forever.</p>
+    <input id="codeInput" type="text" placeholder="e.g. CO-XXXX-XXXX" style="width:100%;padding:13px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:white;font-size:1.05rem;text-align:center;letter-spacing:3px;margin-bottom:12px;font-family:monospace;text-transform:uppercase;outline:none;" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')submitCode()"/>
+    <button onclick="submitCode()" id="unlockBtn" style="width:100%;padding:14px;background:linear-gradient(135deg,#f39c12,#e67e22);color:white;border:none;border-radius:14px;font-size:1rem;font-weight:800;cursor:pointer;">Unlock Translator →</button>
+    <div id="gateError" style="color:#e74c3c;font-size:0.85rem;margin-top:12px;min-height:20px;font-weight:600;"></div>
+    <p style="color:rgba(255,255,255,0.25);font-size:0.72rem;margin-top:18px;">Private access only</p>
+  </div>
+</div>
+
+<script>
+// ===== ACCESS GATE =====
+(function(){
+  var FIREBASE = "https://john-the-builder-default-rtdb.firebaseio.com";
+  var SKEY = "es_unlocked";
+  var THIS_LANG = "spanish";
+  if (localStorage.getItem(SKEY) === "1") {
+    document.getElementById("accessGate").style.display = "none";
+    return;
+  }
+  async function submitCode() {
+    var raw = document.getElementById("codeInput").value.trim().toUpperCase();
+    var errEl = document.getElementById("gateError");
+    var btn = document.getElementById("unlockBtn");
+    if (!raw) { errEl.textContent = "Please enter your access code."; return; }
+    btn.disabled = true; btn.textContent = "Checking..."; errEl.textContent = "";
+    try {
+      if (raw === "MASTER-QCU6-VWP2") {
+        localStorage.setItem(SKEY, "1");
+        document.getElementById("accessGate").style.display = "none";
+        return;
+      }
+      var key = raw.replace(/-/g, "_");
+      var r = await fetch(FIREBASE + "/codes/" + key + ".json");
+      var d = await r.json();
+      if (!d) { errEl.textContent = "Invalid code. Please check and try again."; btn.disabled = false; btn.textContent = "Unlock Translator →"; return; }
+      if (d.used) { errEl.textContent = "This code has already been used on another device."; btn.disabled = false; btn.textContent = "Unlock Translator →"; return; }
+      var langs = d.languages || [];
+      if (langs.indexOf(THIS_LANG) === -1) { errEl.textContent = "This code does not include access to this translator."; btn.disabled = false; btn.textContent = "Unlock Translator →"; return; }
+      await fetch(FIREBASE + "/codes/" + key + ".json", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ used: true, used_at: new Date().toISOString() }) });
+      localStorage.setItem(SKEY, "1");
+      document.getElementById("accessGate").style.display = "none";
+    } catch (e) {
+      errEl.textContent = "Connection error. Please try again.";
+      btn.disabled = false; btn.textContent = "Unlock Translator →";
+    }
+  }
+  window.submitCode = submitCode;
+})();
+</script>
+
 <h1>🇪🇸 Spanish Translator</h1>
 <p class="subtitle">Powered by AI • No limits</p>
 
@@ -97,15 +153,14 @@
 
 <div class="card" id="mainCard">
   <div class="mode-toggle">
-    <button class="mode-btn active" id="voiceModeBtn" onclick="setMode('voice')">🎙 Voice</button>
+    <button class="mode-btn active" id="voiceModeBtn" onclick="setMode('voice')">🎙️ Voice</button>
     <button class="mode-btn" id="textModeBtn" onclick="setMode('text')">⌨️ Type</button>
   </div>
 
   <!-- VOICE MODE -->
   <div id="voiceMode">
-    <button class="mic-btn" id="micBtn" onclick="toggleRecording()"
-      style="background: linear-gradient(135deg, #2980B9, #1ABC9C);">
-      <span class="icon">🎙</span>
+    <button class="mic-btn" id="micBtn" onclick="toggleRecording()" style="background: linear-gradient(135deg, #2980B9, #1ABC9C);">
+      <span class="icon">🎙️</span>
       <span id="micLabel">English<br/>→ Spanish</span>
     </button>
     <p class="hint" id="hint">Tap the circle, speak, then tap again to translate</p>
@@ -119,7 +174,7 @@
     </div>
     <div id="translatedBox" class="hidden">
       <div class="label" id="toLabel">🇪🇸 SPANISH (TRANSLATION)</div>
-      <div class="text-box translation" id="translatedText" onclick="speakNow(this.textContent, lastSpeakLang)" style="cursor:pointer;" title="Tap to hear"></div>
+      <div class="text-box translation" id="translatedText" onclick="speakOut(this.textContent)" style="cursor:pointer;" title="Tap to hear"></div>
     </div>
     <div class="btn-row hidden" id="actionBtns">
       <button class="action-btn listen-btn" onclick="reSpeak()">🔊 Listen again</button>
@@ -134,7 +189,7 @@
     <div id="textStatusMsg" class="status-msg hidden"></div>
     <div id="textTranslatedBox" class="hidden">
       <div class="label" id="textToLabel">🇪🇸 SPANISH (TRANSLATION)</div>
-      <div class="text-box translation" id="textTranslatedText" onclick="speakNow(this.textContent, lastSpeakLang)" style="cursor:pointer;" title="Tap to hear"></div>
+      <div class="text-box translation" id="textTranslatedText" onclick="speakOut(this.textContent)" style="cursor:pointer;" title="Tap to hear"></div>
     </div>
     <div class="btn-row hidden" id="textActionBtns">
       <button class="action-btn listen-btn" onclick="reSpeakText()">🔊 Listen</button>
@@ -144,37 +199,32 @@
 </div>
 
 <script>
-const TRANSLATE_URL = 'https://john-174a7c51.base44.app/functions/translate';
-
+// ===== STATE =====
 let direction = 'en-es';
-let inputMode = 'voice';
+let mode = 'voice';
+let recognition = null;
 let isRecording = false;
 let finalTranscript = '';
-let recognition = null;
-let activeRec = false;
 let lastTranslated = '';
 let lastSpeakLang = 'es-ES';
+let translated = false;
 
+const TRANSLATE_URL = 'https://john-174a7c51.base44.app/functions/translate';
+
+// ===== HELPERS =====
+function show(id) { const el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+function hide(id) { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }
+function showStatus(msg) { const el = document.getElementById('statusMsg'); el.textContent = msg; show('statusMsg'); }
+function showTextStatus(msg) { const el = document.getElementById('textStatusMsg'); el.textContent = msg; show('textStatusMsg'); }
+
+// ===== DIRECTION & MODE =====
 function setDir(dir) {
   direction = dir;
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&dir==='en-es')||(i===1&&dir==='es-en')));
-  const card = document.getElementById('mainCard');
-  card.className = 'card ' + dir;
-  updateLabels();
-  resetAll();
-  resetText();
-}
-
-function setMode(mode) {
-  inputMode = mode;
-  document.getElementById('voiceModeBtn').classList.toggle('active', mode==='voice');
-  document.getElementById('textModeBtn').classList.toggle('active', mode==='text');
-  document.getElementById('voiceMode').classList.toggle('hidden', mode!=='voice');
-  document.getElementById('textMode').classList.toggle('hidden', mode!=='text');
-}
-
-function updateLabels() {
-  const isEnEs = direction === 'en-es';
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', (i === 0 && dir === 'en-es') || (i === 1 && dir === 'es-en'))
+  );
+  document.getElementById('mainCard').className = 'card ' + dir;
+  const isEnEs = dir === 'en-es';
   document.getElementById('micBtn').style.background = isEnEs
     ? 'linear-gradient(135deg, #2980B9, #1ABC9C)'
     : 'linear-gradient(135deg, #c0392b, #e67e22)';
@@ -182,198 +232,208 @@ function updateLabels() {
   document.getElementById('fromLabel').textContent = isEnEs ? '🇺🇸 ENGLISH (ORIGINAL)' : '🇪🇸 SPANISH (ORIGINAL)';
   document.getElementById('toLabel').textContent = isEnEs ? '🇪🇸 SPANISH (TRANSLATION)' : '🇺🇸 ENGLISH (TRANSLATION)';
   document.getElementById('textToLabel').textContent = isEnEs ? '🇪🇸 SPANISH (TRANSLATION)' : '🇺🇸 ENGLISH (TRANSLATION)';
+  resetAll();
+  resetText();
 }
 
+function setMode(m) {
+  mode = m;
+  if (isRecording) stopRecording();
+  document.getElementById('voiceModeBtn').classList.toggle('active', m === 'voice');
+  document.getElementById('textModeBtn').classList.toggle('active', m === 'text');
+  show(m === 'voice' ? 'voiceMode' : 'textMode');
+  hide(m === 'voice' ? 'textMode' : 'voiceMode');
+}
+
+// ===== SPEECH SYNTHESIS (built into the browser - no server needed) =====
+function speakOut(text) {
+  if (!text || !text.trim()) return;
+  if (!window.speechSynthesis) return;
+
+  // Cancel anything currently speaking
+  window.speechSynthesis.cancel();
+
+  const utter = new SpeechSynthesisUtterance(text.trim());
+  utter.lang = lastSpeakLang;
+  utter.rate = 0.9;
+
+  // Try to find a matching voice
+  const voices = window.speechSynthesis.getVoices();
+  const match = voices.find(v => v.lang === lastSpeakLang) ||
+                voices.find(v => v.lang.startsWith(lastSpeakLang.substring(0, 2)));
+  if (match) utter.voice = match;
+
+  window.speechSynthesis.speak(utter);
+}
+
+function reSpeak() { if (lastTranslated) speakOut(lastTranslated); }
+function reSpeakText() { if (lastTranslated) speakOut(lastTranslated); }
+
+// Preload voices (Android Chrome needs this)
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+// ===== VOICE RECOGNITION =====
 function toggleRecording() {
   if (isRecording) stopRecording();
   else startRecording();
 }
 
-function buildRecognition() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const rec = new SR();
-  rec.lang = direction === 'en-es' ? 'en-US' : 'es-ES';
-  rec.continuous = false;
-  rec.interimResults = false;
-  rec.onresult = (e) => {
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) {
-        finalTranscript += e.results[i][0].transcript + ' ';
-      }
-    }
-    document.getElementById('originalText').textContent = finalTranscript.trim();
-    show('originalBox');
-  };
-  rec.onerror = (e) => {
-    if (e.error === 'no-speech' || e.error === 'aborted') return;
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-      showStatus('🎤 Microphone access denied. Please allow mic access in your browser settings.');
-      activeRec = false; isRecording = false;
-      return;
-    }
-    // For any other error, don't crash — just let onend handle it
-  };
-  rec.onend = () => {
-    // Recognition ended (either auto-stop or user tapped stop).
-    // Wait a brief moment for any final onresult to fire, then translate.
-    if (activeRec) {
-      activeRec = false;
-      isRecording = false;
-      const btn = document.getElementById('micBtn');
-      btn.style.border = 'none';
-      hide('recIndicator'); show('hint');
-      btn.style.background = direction === 'en-es' ? 'linear-gradient(135deg, #2980B9, #1ABC9C)' : 'linear-gradient(135deg, #c0392b, #e67e22)';
-      document.getElementById('micLabel').innerHTML = direction === 'en-es' ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
-    }
-    setTimeout(() => doTranslate(finalTranscript), 400);
-  };
-  return rec;
-}
-
 function startRecording() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { showStatus('Your browser does not support voice. Please use Google Chrome.'); return; }
+  if (!SR) {
+    showStatus('🎤 Your browser does not support voice. Please use Google Chrome.');
+    return;
+  }
+
+  // Reset state
   finalTranscript = '';
+  translated = false;
   hide('originalBox'); hide('translatedBox'); hide('actionBtns'); hide('statusMsg');
   document.getElementById('originalText').textContent = '';
   document.getElementById('translatedText').textContent = '';
-  isRecording = true; activeRec = true;
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+  // Create recognition - simple, one-shot
+  recognition = new SR();
+  recognition.lang = direction === 'en-es' ? 'en-US' : 'es-ES';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onresult = (e) => {
+    // Get the single final result
+    finalTranscript = e.results[0][0].transcript;
+    document.getElementById('originalText').textContent = finalTranscript;
+    show('originalBox');
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      showStatus('🎤 Mic access denied. Allow microphone in browser settings and try again.');
+    }
+  };
+
+  recognition.onend = () => {
+    // Reset button state
+    isRecording = false;
+    const btn = document.getElementById('micBtn');
+    btn.style.background = direction === 'en-es'
+      ? 'linear-gradient(135deg, #2980B9, #1ABC9C)'
+      : 'linear-gradient(135deg, #c0392b, #e67e22)';
+    btn.style.border = 'none';
+    document.getElementById('micLabel').innerHTML = direction === 'en-es'
+      ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
+    hide('recIndicator'); show('hint');
+
+    // Translate what we got
+    if (finalTranscript.trim() && !translated) {
+      translated = true;
+      doTranslate(finalTranscript);
+    } else if (!finalTranscript.trim() && !translated) {
+      showStatus("🎤 Didn't catch that. Tap the circle and try again.");
+    }
+  };
+
+  // Update UI
+  isRecording = true;
   const btn = document.getElementById('micBtn');
   btn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
   btn.style.border = '4px solid rgba(255,255,255,0.6)';
-  document.getElementById('micLabel').innerHTML = '⏹<br/>Tap to<br/>translate';
+  document.getElementById('micLabel').innerHTML = '⏹️<br/>Tap to<br/>translate';
   show('recIndicator'); hide('hint');
-  recognition = buildRecognition();
-  recognition.start();
+
+  try {
+    recognition.start();
+  } catch (err) {
+    setTimeout(() => { try { recognition.start(); } catch (e) {} }, 200);
+  }
 }
 
 function stopRecording() {
-  activeRec = false; isRecording = false;
+  isRecording = false;
   if (recognition) recognition.stop();
-  const btn = document.getElementById('micBtn');
-  btn.style.border = 'none';
-  hide('recIndicator'); show('hint');
 }
 
-let translating = false;
+// ===== TRANSLATION =====
 async function doTranslate(text) {
-  if (translating) return;
-  if (!text || !text.trim()) {
-    showStatus('🎤 Didn\'t catch that. Tap the circle and try speaking again.');
-    return;
-  }
-  translating = true;
-  isRecording = false;
+  if (!text || !text.trim()) return;
   const isEnEs = direction === 'en-es';
-  const btn = document.getElementById('micBtn');
-  btn.style.background = isEnEs ? 'linear-gradient(135deg, #2980B9, #1ABC9C)' : 'linear-gradient(135deg, #c0392b, #e67e22)';
-  btn.style.border = 'none';
-  document.getElementById('micLabel').innerHTML = isEnEs ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
+  lastSpeakLang = isEnEs ? 'es-ES' : 'en-US';
+
   showStatus('⏳ Translating...');
   hide('translatedBox'); hide('actionBtns');
+
   try {
-    const from = isEnEs ? 'en' : 'es';
-    const to = isEnEs ? 'es' : 'en';
-    lastSpeakLang = isEnEs ? 'es-ES' : 'en-US';
     const res = await fetch(TRANSLATE_URL, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({text: text.trim(), from, to})
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text.trim(), from: isEnEs ? 'en' : 'es', to: isEnEs ? 'es' : 'en' })
     });
     const data = await res.json();
+
     if (data.translated) {
       lastTranslated = data.translated;
       document.getElementById('translatedText').textContent = data.translated;
-      show('translatedBox'); hide('statusMsg'); show('actionBtns');
-      speakNow(data.translated, lastSpeakLang);
-    } else { showStatus('Translation error. Please try again.'); }
-  } catch (err) { showStatus('Translation error. Please try again.'); }
-  translating = false;
+      hide('statusMsg');
+      show('translatedBox');
+      show('actionBtns');
+      // Auto-speak the translation
+      speakOut(data.translated);
+    } else {
+      showStatus('Translation error. Please try again.');
+    }
+  } catch (err) {
+    showStatus('Translation error. Please try again.');
+  }
 }
 
+// ===== TEXT MODE =====
 async function translateText() {
-  const text = document.getElementById('textInput').value.trim();
+  const input = document.getElementById('textInput');
+  const text = input.value.trim();
   if (!text) return;
+
   const isEnEs = direction === 'en-es';
-  const from = isEnEs ? 'en' : 'es';
-  const to = isEnEs ? 'es' : 'en';
   lastSpeakLang = isEnEs ? 'es-ES' : 'en-US';
-  document.getElementById('textStatusMsg').textContent = '⏳ Translating...';
-  show('textStatusMsg'); hide('textTranslatedBox'); hide('textActionBtns');
+
+  showTextStatus('⏳ Translating...');
+  hide('textTranslatedBox'); hide('textActionBtns');
+
   try {
     const res = await fetch(TRANSLATE_URL, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({text, from, to})
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, from: isEnEs ? 'en' : 'es', to: isEnEs ? 'es' : 'en' })
     });
     const data = await res.json();
+
     if (data.translated) {
       lastTranslated = data.translated;
       document.getElementById('textTranslatedText').textContent = data.translated;
-      hide('textStatusMsg'); show('textTranslatedBox'); show('textActionBtns');
-      speakNow(data.translated, lastSpeakLang);
-    } else { document.getElementById('textStatusMsg').textContent = 'Translation error. Try again.'; }
-  } catch { document.getElementById('textStatusMsg').textContent = 'Translation error. Try again.'; }
+      hide('textStatusMsg');
+      show('textTranslatedBox');
+      show('textActionBtns');
+      speakOut(data.translated);
+    } else {
+      showTextStatus('Translation error. Please try again.');
+    }
+  } catch (err) {
+    showTextStatus('Translation error. Please try again.');
+  }
 }
 
-// speak() replaced by speakNow() using TTS proxy
-
-let currentAudio = null;
-let speakQueue = [];
-let isSpeaking = false;
-
-function speakNow(text, lang) {
-  if (!text || !text.trim()) return;
-  // Cancel any current playback
-  stopSpeaking();
-  const TTS_PROXY = 'https://john-174a7c51.base44.app/functions/tts';
-  const ttsLang = lang.startsWith('es') ? 'es' : 'en';
-  const chunks = [];
-  const maxLen = 180;
-  let remaining = text.trim();
-  while (remaining.length > 0) {
-    let chunk = remaining.substring(0, maxLen);
-    const lastSpace = chunk.lastIndexOf(' ');
-    if (remaining.length > maxLen && lastSpace > 0) chunk = chunk.substring(0, lastSpace);
-    chunks.push(chunk.trim());
-    remaining = remaining.substring(chunk.length).trim();
-  }
-  speakQueue = chunks;
-  let i = 0;
-  isSpeaking = true;
-  function playNext() {
-    if (i >= speakQueue.length) { isSpeaking = false; return; }
-    const src = TTS_PROXY + '?lang=' + ttsLang + '&text=' + encodeURIComponent(speakQueue[i]);
-    const audio = new Audio(src);
-    currentAudio = audio;
-    audio.onended = () => { i++; playNext(); };
-    audio.onerror = () => { i++; playNext(); };
-    audio.play().catch(() => { i++; playNext(); });
-    i++;
-  }
-  playNext();
-}
-
-function stopSpeaking() {
-  isSpeaking = false;
-  speakQueue = [];
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
-  window.speechSynthesis.cancel();
-}
-
-function reSpeak() { if (lastTranslated) speakNow(lastTranslated, lastSpeakLang); }
-function reSpeakText() { if (lastTranslated) speakNow(lastTranslated, lastSpeakLang); }
-
+// ===== RESET =====
 function resetAll() {
-  activeRec = false; isRecording = false;
-  if (recognition) recognition.abort();
-  stopSpeaking();
-  finalTranscript = ''; lastTranslated = ''; translating = false;
+  if (isRecording) stopRecording();
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  finalTranscript = ''; lastTranslated = ''; translated = false;
   document.getElementById('originalText').textContent = '';
   document.getElementById('translatedText').textContent = '';
-  hide('originalBox'); hide('translatedBox'); hide('actionBtns'); hide('statusMsg'); hide('recIndicator'); show('hint');
+  hide('originalBox'); hide('translatedBox'); hide('actionBtns'); hide('statusMsg'); hide('recIndicator');
+  show('hint');
   const isEnEs = direction === 'en-es';
   const btn = document.getElementById('micBtn');
   btn.style.background = isEnEs ? 'linear-gradient(135deg, #2980B9, #1ABC9C)' : 'linear-gradient(135deg, #c0392b, #e67e22)';
@@ -385,12 +445,18 @@ function resetText() {
   document.getElementById('textInput').value = '';
   document.getElementById('textTranslatedText').textContent = '';
   hide('textTranslatedBox'); hide('textActionBtns'); hide('textStatusMsg');
-  lastTranslated = '';
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
-function showStatus(msg) { const el = document.getElementById('statusMsg'); el.textContent = msg; show('statusMsg'); }
-function show(id) { document.getElementById(id).classList.remove('hidden'); }
-function hide(id) { document.getElementById(id).classList.add('hidden'); }
+// Unlock speech synthesis on mobile (requires user interaction)
+document.addEventListener('touchstart', function unlockSpeech() {
+  if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(u);
+  }
+  document.removeEventListener('touchstart', unlockSpeech);
+}, { once: true });
 </script>
+
 </body>
 </html>
