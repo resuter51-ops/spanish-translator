@@ -193,19 +193,15 @@ function buildRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const rec = new SR();
   rec.lang = direction === 'en-es' ? 'en-US' : 'es-ES';
-  rec.continuous = true;
-  rec.interimResults = true;
+  rec.continuous = false;
+  rec.interimResults = false;
   rec.onresult = (e) => {
-    let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
         finalTranscript += e.results[i][0].transcript + ' ';
-      } else {
-        interim += e.results[i][0].transcript;
       }
     }
-    const display = finalTranscript.trim() || interim.trim();
-    document.getElementById('originalText').textContent = display;
+    document.getElementById('originalText').textContent = finalTranscript.trim();
     show('originalBox');
   };
   rec.onerror = (e) => {
@@ -218,20 +214,18 @@ function buildRecognition() {
     // For any other error, don't crash — just let onend handle it
   };
   rec.onend = () => {
+    // Recognition ended (either auto-stop or user tapped stop).
+    // Wait a brief moment for any final onresult to fire, then translate.
     if (activeRec) {
-      // Recognition stopped on its own (Android timeout). Restart to keep listening.
-      try {
-        const n = buildRecognition();
-        recognition = n;
-        n.start();
-      } catch (err) {
-        activeRec = false;
-        doTranslate(finalTranscript);
-      }
-    } else {
-      // User tapped to stop. Small delay to catch any final results.
-      setTimeout(() => doTranslate(finalTranscript), 300);
+      activeRec = false;
+      isRecording = false;
+      const btn = document.getElementById('micBtn');
+      btn.style.border = 'none';
+      hide('recIndicator'); show('hint');
+      btn.style.background = direction === 'en-es' ? 'linear-gradient(135deg, #2980B9, #1ABC9C)' : 'linear-gradient(135deg, #c0392b, #e67e22)';
+      document.getElementById('micLabel').innerHTML = direction === 'en-es' ? 'English<br/>→ Spanish' : 'Spanish<br/>→ English';
     }
+    setTimeout(() => doTranslate(finalTranscript), 400);
   };
   return rec;
 }
@@ -323,7 +317,14 @@ async function translateText() {
 
 // speak() replaced by speakNow() using TTS proxy
 
+let currentAudio = null;
+let speakQueue = [];
+let isSpeaking = false;
+
 function speakNow(text, lang) {
+  if (!text || !text.trim()) return;
+  // Cancel any current playback
+  stopSpeaking();
   const TTS_PROXY = 'https://john-174a7c51.base44.app/functions/tts';
   const ttsLang = lang.startsWith('es') ? 'es' : 'en';
   const chunks = [];
@@ -336,17 +337,30 @@ function speakNow(text, lang) {
     chunks.push(chunk.trim());
     remaining = remaining.substring(chunk.length).trim();
   }
+  speakQueue = chunks;
   let i = 0;
+  isSpeaking = true;
   function playNext() {
-    if (i >= chunks.length) return;
-    const src = TTS_PROXY + '?lang=' + ttsLang + '&text=' + encodeURIComponent(chunks[i]);
+    if (i >= speakQueue.length) { isSpeaking = false; return; }
+    const src = TTS_PROXY + '?lang=' + ttsLang + '&text=' + encodeURIComponent(speakQueue[i]);
     const audio = new Audio(src);
+    currentAudio = audio;
     audio.onended = () => { i++; playNext(); };
     audio.onerror = () => { i++; playNext(); };
-    audio.play().catch(() => {});
+    audio.play().catch(() => { i++; playNext(); });
     i++;
   }
   playNext();
+}
+
+function stopSpeaking() {
+  isSpeaking = false;
+  speakQueue = [];
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  window.speechSynthesis.cancel();
 }
 
 function reSpeak() { if (lastTranslated) speakNow(lastTranslated, lastSpeakLang); }
@@ -355,7 +369,7 @@ function reSpeakText() { if (lastTranslated) speakNow(lastTranslated, lastSpeakL
 function resetAll() {
   activeRec = false; isRecording = false;
   if (recognition) recognition.abort();
-  window.speechSynthesis.cancel();
+  stopSpeaking();
   finalTranscript = ''; lastTranslated = ''; translating = false;
   document.getElementById('originalText').textContent = '';
   document.getElementById('translatedText').textContent = '';
