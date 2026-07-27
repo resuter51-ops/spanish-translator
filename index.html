@@ -299,7 +299,7 @@ function startRecording() {
   // Create recognition
   recognition = new SR();
   recognition.lang = direction === 'en-es' ? 'en-US' : 'es-ES';
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
 
   // Capture words as they come in - this ensures we have text even if
